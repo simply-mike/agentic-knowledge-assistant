@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     postgres_db: str = "agentic_knowledge"
     postgres_user: str = "agentic"
     postgres_password: str = Field(default="agentic")
+    embedding_dimensions: int = 1536
 
     openai_api_key: str | None = None
     openai_base_url: str | None = None
