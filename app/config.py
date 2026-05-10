@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,7 +17,13 @@ class Settings(BaseSettings):
     postgres_db: str = "agentic_knowledge"
     postgres_user: str = "agentic"
     postgres_password: str = Field(default="agentic")
+
+    embedding_provider: Literal["auto", "fake", "openai"] = "auto"
     embedding_dimensions: int = 1536
+    embedding_model: str = "text-embedding-3-small"
+    embedding_include_dimensions: bool = True
+    embedding_request_timeout_seconds: float = 30.0
+
     chunk_size_tokens: int = 900
     chunk_overlap_tokens: int = 120
 

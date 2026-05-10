@@ -16,7 +16,7 @@ from app.ingestion.cleaners import clean_markdown
 from app.ingestion.hashing import calculate_document_hash, should_skip_document
 from app.ingestion.loaders import RawMarkdownDocument, load_markdown_directory, load_markdown_file
 from app.logging_config import configure_logging
-from app.retrieval.embeddings import DeterministicEmbeddingProvider, EmbeddingProvider
+from app.retrieval.embeddings import EmbeddingProvider, build_embedding_provider
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def ingest_path(
     embedding_provider: EmbeddingProvider | None = None,
 ) -> IngestionStats:
     settings = get_settings()
-    provider = embedding_provider or DeterministicEmbeddingProvider(settings.embedding_dimensions)
+    provider = embedding_provider or build_embedding_provider(settings)
 
     owns_session = db is None
     session = db or SessionLocal()
