@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     postgres_user: str = "agentic"
     postgres_password: str = Field(default="agentic")
     embedding_dimensions: int = 1536
+    chunk_size_tokens: int = 900
+    chunk_overlap_tokens: int = 120
 
     openai_api_key: str | None = None
     openai_base_url: str | None = None
