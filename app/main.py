@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.api.routes_chat import router as chat_router
 from app.api.routes_health import router as health_router
 from app.config import get_settings
 from app.logging_config import configure_logging
@@ -13,4 +14,5 @@ app = FastAPI(
     description="Agentic RAG assistant for enterprise knowledge bases.",
 )
 
+app.include_router(chat_router)
 app.include_router(health_router)
