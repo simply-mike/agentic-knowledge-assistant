@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.schemas import ChatRequest, ChatResponse, SourceSchema
+from app.agents.graph import LangGraphAgent
 from app.config import get_settings
 from app.db.session import get_db
 from app.permissions.policies import PermissionPolicyError
 from app.retrieval.embeddings import build_embedding_provider
-from app.retrieval.rag import BaselineRAGService
 from app.retrieval.retriever import KnowledgeRetriever
 from app.retrieval.vector_store import PGVectorStore
 
@@ -19,10 +19,10 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     embedding_provider = build_embedding_provider(settings)
     vector_store = PGVectorStore(db)
     retriever = KnowledgeRetriever(vector_store, embedding_provider)
-    rag_service = BaselineRAGService(retriever)
+    agent = LangGraphAgent(retriever)
 
     try:
-        response = rag_service.answer(
+        response = agent.answer(
             query=request.message,
             role=request.role,
             top_k=request.top_k,
