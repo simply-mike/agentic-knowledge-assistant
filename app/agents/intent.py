@@ -132,6 +132,13 @@ def _score_intents(normalized_query: str) -> list[IntentCandidate]:
 
 def _choose_primary_intent(candidates: list[IntentCandidate]) -> IntentCandidate:
     intents = {candidate.intent for candidate in candidates}
+    sql_candidate = next(
+        (candidate for candidate in candidates if candidate.intent == "sql_question"),
+        None,
+    )
+    if sql_candidate and _has_explicit_sql_signal(sql_candidate):
+        return sql_candidate
+
     docs_candidate = next(
         (candidate for candidate in candidates if candidate.intent == "docs_question"),
         None,
@@ -165,6 +172,13 @@ def _classification_reason(
 
 def _has_strong_docs_signal(candidate: IntentCandidate) -> bool:
     return any(term not in WEAK_DOCS_TERMS for term in candidate.matched_terms)
+
+
+def _has_explicit_sql_signal(candidate: IntentCandidate) -> bool:
+    return any(
+        term in {"select", "sql", "table", "pipeline_runs", "query the database"}
+        for term in candidate.matched_terms
+    )
 
 
 def _matches(pattern: str, normalized_query: str) -> bool:

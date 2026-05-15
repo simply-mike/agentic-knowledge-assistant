@@ -1,8 +1,10 @@
 from uuid import uuid4
 
 from app.agents.nodes import (
+    call_mock_metrics_api,
     classify_intent,
     fallback_answer,
+    generate_safe_sql,
     grade_context,
     refuse_or_fallback,
     rewrite_query,
@@ -28,6 +30,18 @@ def test_classify_metrics_question() -> None:
     update = classify_intent(state)
 
     assert update["intent"] == "metrics_question"
+
+
+def test_classify_sql_question_with_domain_terms() -> None:
+    state = initial_agent_state(
+        "Show failed rows in pipeline_runs for kafka",
+        "developer",
+        "trace",
+    )
+
+    update = classify_intent(state)
+
+    assert update["intent"] == "sql_question"
 
 
 def test_classify_mixed_docs_and_metrics_prefers_docs_with_secondary_intent() -> None:
@@ -106,10 +120,31 @@ def test_fallback_answer_has_no_citations() -> None:
     assert update["citations"] == []
 
 
-def test_tool_intent_returns_phase_message() -> None:
+def test_call_mock_metrics_api_records_tool_call_and_result() -> None:
     state = initial_agent_state("What is p95 latency?", "developer", "trace")
     state["intent"] = "metrics_question"
 
+    update = call_mock_metrics_api(state)
+
+    assert update["tool_calls"][0]["tool"] == "mock_metrics_api"
+    assert update["tool_results"][0]["result"]["p95_latency_ms"] == 420
+
+
+def test_generate_safe_sql_targets_pipeline_runs() -> None:
+    state = initial_agent_state("Show failed rows in pipeline_runs for kafka", "developer", "trace")
+    state["intent"] = "sql_question"
+
+    update = generate_safe_sql(state)
+
+    assert update["generated_sql"].startswith("SELECT")
+    assert "FROM pipeline_runs" in update["generated_sql"]
+    assert "status = 'failed'" in update["generated_sql"]
+
+
+def test_refuse_or_fallback_handles_general_chat() -> None:
+    state = initial_agent_state("hello", "developer", "trace")
+    state["intent"] = "general_chat"
+
     update = refuse_or_fallback(state)
 
-    assert "not implemented" in update["answer"]
+    assert "knowledge base" in update["answer"]

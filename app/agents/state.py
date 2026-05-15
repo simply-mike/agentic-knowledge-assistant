@@ -21,6 +21,7 @@ class AgentState(TypedDict):
     rewritten_query: str | None
     retrieved_chunks: list[dict[str, Any]]
     graded_chunks: list[dict[str, Any]]
+    generated_sql: str | None
     tool_calls: list[dict[str, Any]]
     tool_results: list[dict[str, Any]]
     answer: str | None
@@ -49,6 +50,7 @@ def initial_agent_state(
         rewritten_query=None,
         retrieved_chunks=[],
         graded_chunks=[],
+        generated_sql=None,
         tool_calls=[],
         tool_results=[],
         answer=None,

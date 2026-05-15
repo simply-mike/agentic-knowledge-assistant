@@ -7,6 +7,8 @@ from app.agents.prompts import NO_CONTEXT_MESSAGE, UNSUPPORTED_TOOL_MESSAGE
 from app.agents.state import AgentState
 from app.retrieval.rag import ExtractiveAnswerGenerator, SourceCitation
 from app.retrieval.vector_store import RetrievedChunk
+from app.tools.mock_metrics_api import infer_period, infer_pipeline_name, mock_metrics_api
+from app.tools.sql_tool import UnsafeSQLQueryError, build_pipeline_runs_query
 
 
 class RetrieverDependency:
@@ -17,6 +19,11 @@ class RetrieverDependency:
         top_k: int = 5,
         filters: dict[str, Any] | None = None,
     ) -> list[RetrievedChunk]:
+        raise NotImplementedError
+
+
+class SQLToolDependency:
+    def run(self, sql_query: str) -> dict[str, Any]:
         raise NotImplementedError
 
 
@@ -43,6 +50,17 @@ def retrieve_context(state: AgentState, retriever: RetrieverDependency) -> dict[
         query=query,
         role=state["user_role"],
         top_k=state["top_k"],
+        filters=state["filters"],
+    )
+    return {"retrieved_chunks": [_chunk_to_dict(chunk) for chunk in chunks]}
+
+
+def retrieve_related_docs(state: AgentState, retriever: RetrieverDependency) -> dict[str, Any]:
+    query = _related_docs_query(state)
+    chunks = retriever.search(
+        query=query,
+        role=state["user_role"],
+        top_k=min(state["top_k"], 3),
         filters=state["filters"],
     )
     return {"retrieved_chunks": [_chunk_to_dict(chunk) for chunk in chunks]}
@@ -83,13 +101,13 @@ def generate_answer(state: AgentState) -> dict[str, Any]:
 
 
 def validate_grounding(state: AgentState) -> dict[str, Any]:
-    if state["answer"] and state["citations"]:
+    if state["answer"] and (state["citations"] or state["tool_results"]):
         return {}
     return {"errors": [*state["errors"], "answer_not_grounded"]}
 
 
 def should_finish_or_fallback(state: AgentState) -> str:
-    if state["answer"] and state["citations"]:
+    if state["answer"] and (state["citations"] or state["tool_results"]):
         return "end"
     return "fallback_answer"
 
@@ -112,9 +130,119 @@ def refuse_or_fallback(state: AgentState) -> dict[str, Any]:
     return {"answer": message, "citations": []}
 
 
+def call_mock_metrics_api(
+    state: AgentState,
+    metrics_client=mock_metrics_api,
+) -> dict[str, Any]:
+    pipeline_name = infer_pipeline_name(state["user_query"])
+    period = infer_period(state["user_query"])
+    result = metrics_client(pipeline_name=pipeline_name, period=period)
+    tool_call = {
+        "tool": "mock_metrics_api",
+        "args": {"pipeline_name": pipeline_name, "period": period},
+        "status": "ok",
+    }
+    tool_result = {"tool": "mock_metrics_api", "result": result}
+    return {
+        "tool_calls": [*state["tool_calls"], tool_call],
+        "tool_results": [*state["tool_results"], tool_result],
+    }
+
+
+def generate_answer_with_tool_result(state: AgentState) -> dict[str, Any]:
+    metrics_result = _latest_tool_result(state, "mock_metrics_api")
+    if not metrics_result:
+        return fallback_answer(state)
+
+    metrics = metrics_result["result"]
+    answer = (
+        "Synthetic metrics from the mock internal API:\n\n"
+        f"- Pipeline: {metrics['pipeline_name']}\n"
+        f"- Period: {metrics['period']}\n"
+        f"- Average latency: {metrics['avg_latency_ms']} ms\n"
+        f"- P95 latency: {metrics['p95_latency_ms']} ms\n"
+        f"- Failed jobs: {metrics['failed_jobs']}\n"
+        f"- Success rate: {metrics['success_rate']:.3f}\n\n"
+        "These values are synthetic demo metrics, not production telemetry."
+    )
+    citations = [
+        _citation_to_dict(citation)
+        for citation in _citations_from_chunks(
+            _dict_to_chunk(chunk) for chunk in state["retrieved_chunks"]
+        )
+    ]
+    return {"answer": answer, "citations": citations}
+
+
+def generate_safe_sql(state: AgentState) -> dict[str, Any]:
+    sql_query = build_pipeline_runs_query(state["user_query"])
+    return {"generated_sql": sql_query}
+
+
+def run_sql_tool(state: AgentState, sql_tool: SQLToolDependency | None) -> dict[str, Any]:
+    sql_query = state["generated_sql"]
+    if sql_query is None:
+        return {"errors": [*state["errors"], "sql_generation_failed"]}
+    if sql_tool is None:
+        return {"errors": [*state["errors"], "sql_tool_unavailable"]}
+
+    tool_call = {
+        "tool": "sql_tool",
+        "args": {"sql_query": sql_query},
+        "status": "ok",
+    }
+    try:
+        result = sql_tool.run(sql_query)
+    except UnsafeSQLQueryError as exc:
+        tool_call["status"] = "rejected"
+        return {
+            "tool_calls": [*state["tool_calls"], tool_call],
+            "errors": [*state["errors"], str(exc)],
+        }
+
+    return {
+        "tool_calls": [*state["tool_calls"], tool_call],
+        "tool_results": [*state["tool_results"], {"tool": "sql_tool", "result": result}],
+    }
+
+
+def generate_answer_with_table(state: AgentState) -> dict[str, Any]:
+    sql_result = _latest_tool_result(state, "sql_tool")
+    if not sql_result:
+        return fallback_answer(state)
+
+    result = sql_result["result"]
+    rows = result["rows"]
+    if not rows:
+        answer = (
+            "The read-only SQL tool returned no matching demo pipeline runs. "
+            f"SQL used: `{result['sql']}`"
+        )
+        return {"answer": answer, "citations": []}
+
+    row_summaries = []
+    for row in rows[:5]:
+        row_summaries.append(
+            "- "
+            f"{row['pipeline_name']} at {row['started_at']}: "
+            f"{row['status']}, records={row['records_processed']}, "
+            f"latency_ms={row['latency_ms']}, error_code={row['error_code']}"
+        )
+    answer = (
+        "The read-only SQL tool queried the local demo `pipeline_runs` table.\n\n"
+        + "\n".join(row_summaries)
+        + f"\n\nRows returned: {result['row_count']}. SQL used: `{result['sql']}`"
+    )
+    return {"answer": answer, "citations": []}
+
+
 def route_by_intent(state: AgentState) -> str:
     if state["intent"] == "docs_question":
         return "docs_question"
+    if state["intent"] == "metrics_question":
+        return "metrics_question"
+    if state["intent"] == "sql_question":
+        return "sql_question"
     return "refuse_or_fallback"
 
 
@@ -194,3 +322,17 @@ def _rewrite_query_text(query: str) -> str:
     if "configure" in stripped.lower():
         return stripped
     return f"{stripped} documentation guide overview"
+
+
+def _related_docs_query(state: AgentState) -> str:
+    if state["intent"] == "metrics_question":
+        pipeline_name = infer_pipeline_name(state["user_query"])
+        return f"{pipeline_name} metrics api reference sla runbook"
+    return state["user_query"]
+
+
+def _latest_tool_result(state: AgentState, tool_name: str) -> dict[str, Any] | None:
+    for tool_result in reversed(state["tool_results"]):
+        if tool_result["tool"] == tool_name:
+            return tool_result
+    return None

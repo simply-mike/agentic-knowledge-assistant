@@ -71,13 +71,32 @@ def test_langgraph_agent_falls_back_without_context() -> None:
     assert response.citations == []
 
 
-def test_langgraph_agent_refuses_tool_branch_until_phase_8() -> None:
-    agent = LangGraphAgent(FakeRetriever([]))
+def test_langgraph_agent_calls_metrics_tool() -> None:
+    retriever = FakeRetriever(
+        [
+            _chunk(
+                title="Metrics API Reference",
+                content="The metrics API exposes latency and success-rate telemetry.",
+            )
+        ]
+    )
+    agent = LangGraphAgent(retriever)
 
     response = agent.answer("What is p95 latency for kafka_ingestion?", role="data_analyst")
 
-    assert "not implemented" in response.answer
-    assert response.citations == []
+    assert "P95 latency: 420 ms" in response.answer
+    assert response.tool_calls[0]["tool"] == "mock_metrics_api"
+    assert response.citations[0].title == "Metrics API Reference"
+
+
+def test_langgraph_agent_runs_sql_tool_for_sql_question() -> None:
+    agent = LangGraphAgent(FakeRetriever([]), sql_tool=FakeSQLTool())
+
+    response = agent.answer("Show failed rows in pipeline_runs for kafka", role="data_analyst")
+
+    assert "read-only SQL tool queried" in response.answer
+    assert response.tool_calls[0]["tool"] == "sql_tool"
+    assert "FROM pipeline_runs" in response.tool_calls[0]["args"]["sql_query"]
 
 
 def _chunk(title: str, content: str) -> RetrievedChunk:
@@ -94,3 +113,22 @@ def _chunk(title: str, content: str) -> RetrievedChunk:
         token_count=len(content.split()),
         distance=0.1,
     )
+
+
+class FakeSQLTool:
+    def run(self, sql_query: str) -> dict:
+        return {
+            "sql": sql_query,
+            "row_count": 1,
+            "rows": [
+                {
+                    "pipeline_name": "kafka_ingestion",
+                    "started_at": "2026-05-15T10:00:00+00:00",
+                    "finished_at": "2026-05-15T10:08:00+00:00",
+                    "status": "failed",
+                    "records_processed": 480000,
+                    "latency_ms": 610,
+                    "error_code": "KAFKA_TIMEOUT",
+                }
+            ],
+        }

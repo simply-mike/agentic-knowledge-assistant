@@ -9,6 +9,7 @@ from app.permissions.policies import PermissionPolicyError
 from app.retrieval.embeddings import build_embedding_provider
 from app.retrieval.retriever import KnowledgeRetriever
 from app.retrieval.vector_store import PGVectorStore
+from app.tools.sql_tool import ReadOnlySQLTool
 
 router = APIRouter(tags=["chat"])
 
@@ -19,7 +20,7 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     embedding_provider = build_embedding_provider(settings)
     vector_store = PGVectorStore(db)
     retriever = KnowledgeRetriever(vector_store, embedding_provider)
-    agent = LangGraphAgent(retriever)
+    agent = LangGraphAgent(retriever, sql_tool=ReadOnlySQLTool(db))
 
     try:
         response = agent.answer(
