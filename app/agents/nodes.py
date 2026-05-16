@@ -29,8 +29,17 @@ class SQLToolDependency:
 
 def classify_intent(state: AgentState) -> dict[str, Any]:
     classification = classify_query_intent(state["user_query"])
+    intent = classification.intent
+    reason = classification.reason
+    if _is_restricted_confidential_query(state):
+        intent = "access_request"
+        reason = "restricted confidential query for non-admin role"
+    elif _is_admin_confidential_policy_query(state):
+        intent = "docs_question"
+        reason = "admin confidential policy query can use permitted docs"
+
     return {
-        "intent": classification.intent,
+        "intent": intent,
         "intent_confidence": classification.confidence,
         "candidate_intents": [
             {
@@ -40,7 +49,7 @@ def classify_intent(state: AgentState) -> dict[str, Any]:
             }
             for candidate in classification.candidates
         ],
-        "intent_reason": classification.reason,
+        "intent_reason": reason,
     }
 
 
@@ -336,3 +345,16 @@ def _latest_tool_result(state: AgentState, tool_name: str) -> dict[str, Any] | N
         if tool_result["tool"] == tool_name:
             return tool_result
     return None
+
+
+def _is_restricted_confidential_query(state: AgentState) -> bool:
+    return "confidential" in state["user_query"].lower() and state["user_role"] != "admin"
+
+
+def _is_admin_confidential_policy_query(state: AgentState) -> bool:
+    normalized = state["user_query"].lower()
+    return (
+        state["user_role"] == "admin"
+        and "confidential" in normalized
+        and "policy" in normalized
+    )

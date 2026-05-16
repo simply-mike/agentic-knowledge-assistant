@@ -68,6 +68,22 @@ INTENT_PATTERNS: dict[Intent, tuple[str, ...]] = {
 }
 
 WEAK_DOCS_TERMS = {"how", "what", "explain"}
+EXPLICIT_DOCS_TERMS = {
+    "configure",
+    "setup",
+    "guide",
+    "runbook",
+    "documentation",
+}
+EXPLICIT_METRICS_TERMS = {
+    "metric",
+    "metrics",
+    "latency",
+    "p95",
+    "success rate",
+    "failed jobs",
+    "records processed",
+}
 
 INTENT_PRIORITY: dict[Intent, int] = {
     "docs_question": 50,
@@ -139,10 +155,21 @@ def _choose_primary_intent(candidates: list[IntentCandidate]) -> IntentCandidate
     if sql_candidate and _has_explicit_sql_signal(sql_candidate):
         return sql_candidate
 
+    metrics_candidate = next(
+        (candidate for candidate in candidates if candidate.intent == "metrics_question"),
+        None,
+    )
     docs_candidate = next(
         (candidate for candidate in candidates if candidate.intent == "docs_question"),
         None,
     )
+    if (
+        metrics_candidate
+        and _has_explicit_metrics_signal(metrics_candidate)
+        and not (docs_candidate and _has_explicit_docs_signal(docs_candidate))
+    ):
+        return metrics_candidate
+
     if docs_candidate and len(intents) > 1 and _has_strong_docs_signal(docs_candidate):
         return docs_candidate
     return candidates[0]
@@ -179,6 +206,14 @@ def _has_explicit_sql_signal(candidate: IntentCandidate) -> bool:
         term in {"select", "sql", "table", "pipeline_runs", "query the database"}
         for term in candidate.matched_terms
     )
+
+
+def _has_explicit_metrics_signal(candidate: IntentCandidate) -> bool:
+    return any(term in EXPLICIT_METRICS_TERMS for term in candidate.matched_terms)
+
+
+def _has_explicit_docs_signal(candidate: IntentCandidate) -> bool:
+    return any(term in EXPLICIT_DOCS_TERMS for term in candidate.matched_terms)
 
 
 def _matches(pattern: str, normalized_query: str) -> bool:

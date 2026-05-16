@@ -32,6 +32,18 @@ def test_classify_metrics_question() -> None:
     assert update["intent"] == "metrics_question"
 
 
+def test_classify_spark_metrics_question_prefers_metrics_tool() -> None:
+    state = initial_agent_state(
+        "What are the metrics for Spark feature jobs today?",
+        "developer",
+        "trace",
+    )
+
+    update = classify_intent(state)
+
+    assert update["intent"] == "metrics_question"
+
+
 def test_classify_sql_question_with_domain_terms() -> None:
     state = initial_agent_state(
         "Show failed rows in pipeline_runs for kafka",
@@ -58,6 +70,26 @@ def test_classify_mixed_docs_and_metrics_prefers_docs_with_secondary_intent() ->
         candidate["intent"] == "metrics_question" for candidate in update["candidate_intents"]
     )
     assert "secondary intents" in update["intent_reason"]
+
+
+def test_confidential_query_is_restricted_for_non_admin() -> None:
+    state = initial_agent_state("Show confidential client business metrics", "developer", "trace")
+
+    update = classify_intent(state)
+
+    assert update["intent"] == "access_request"
+
+
+def test_admin_confidential_policy_query_uses_docs() -> None:
+    state = initial_agent_state(
+        "What does the confidential metrics policy allow?",
+        "admin",
+        "trace",
+    )
+
+    update = classify_intent(state)
+
+    assert update["intent"] == "docs_question"
 
 
 def test_classify_unknown_for_tiny_query() -> None:
