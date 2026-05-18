@@ -6,8 +6,24 @@ from app.retrieval.rag import RAGResponse
 
 
 @dataclass(frozen=True)
+class EvaluationCheck:
+    name: str
+    passed: bool
+    details: str
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "passed": self.passed,
+            "details": self.details,
+        }
+
+
+@dataclass(frozen=True)
 class QuestionEvaluation:
     question_id: str
+    role: str
+    tags: list[str]
     expected_behavior: str
     expected_sources: list[str]
     expected_tool: str | None
@@ -17,10 +33,14 @@ class QuestionEvaluation:
     tool_call_correct: bool | None
     refusal_correct: bool | None
     called_tools: list[str]
+    checks: list[EvaluationCheck]
+    passed: bool
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "question_id": self.question_id,
+            "role": self.role,
+            "tags": self.tags,
             "expected_behavior": self.expected_behavior,
             "expected_sources": self.expected_sources,
             "expected_tool": self.expected_tool,
@@ -30,6 +50,8 @@ class QuestionEvaluation:
             "tool_call_correct": self.tool_call_correct,
             "refusal_correct": self.refusal_correct,
             "called_tools": self.called_tools,
+            "checks": [check.as_dict() for check in self.checks],
+            "passed": self.passed,
         }
 
 
@@ -57,8 +79,20 @@ def evaluate_response(question: EvalQuestion, response: RAGResponse) -> Question
     if question.expected_behavior == "deny_permission":
         permission_correct = _is_refusal_like(response.answer) and not bool(source_hit)
 
+    checks = _build_checks(
+        question=question,
+        response=response,
+        source_hit=source_hit,
+        answer_has_citation=answer_has_citation,
+        tool_call_correct=tool_call_correct,
+        permission_correct=permission_correct,
+        refusal_correct=refusal_correct,
+    )
+
     return QuestionEvaluation(
         question_id=question.id,
+        role=question.role,
+        tags=question.tags,
         expected_behavior=question.expected_behavior,
         expected_sources=question.expected_sources,
         expected_tool=expected_tool,
@@ -68,6 +102,8 @@ def evaluate_response(question: EvalQuestion, response: RAGResponse) -> Question
         tool_call_correct=tool_call_correct,
         refusal_correct=refusal_correct,
         called_tools=called_tools,
+        checks=checks,
+        passed=all(check.passed for check in checks),
     )
 
 
@@ -97,7 +133,84 @@ def aggregate_metrics(results: list[QuestionEvaluation]) -> dict[str, Any]:
             for result in results
             if result.refusal_correct is not None
         ),
+        "question_pass_rate": _rate(result.passed for result in results),
     }
+
+
+def _build_checks(
+    question: EvalQuestion,
+    response: RAGResponse,
+    source_hit: bool | None,
+    answer_has_citation: bool,
+    tool_call_correct: bool | None,
+    permission_correct: bool | None,
+    refusal_correct: bool | None,
+) -> list[EvaluationCheck]:
+    checks: list[EvaluationCheck] = []
+    if question.expected_sources:
+        checks.append(
+            EvaluationCheck(
+                name="expected_source",
+                passed=bool(source_hit),
+                details=f"expected one of {question.expected_sources}",
+            )
+        )
+
+    if question.expected_behavior == "answer":
+        checks.append(
+            EvaluationCheck(
+                name="citation_present",
+                passed=answer_has_citation,
+                details="answer questions should include at least one citation",
+            )
+        )
+
+    if question.expected_tool:
+        checks.append(
+            EvaluationCheck(
+                name="expected_tool",
+                passed=bool(tool_call_correct),
+                details=f"expected tool {question.expected_tool}",
+            )
+        )
+
+    if question.expected_behavior == "deny_permission":
+        checks.append(
+            EvaluationCheck(
+                name="permission_denied",
+                passed=bool(permission_correct),
+                details="restricted question should refuse without expected restricted source",
+            )
+        )
+
+    if question.expected_behavior in {"deny_permission", "fallback"}:
+        checks.append(
+            EvaluationCheck(
+                name="refusal",
+                passed=bool(refusal_correct),
+                details="question should produce a refusal or fallback answer",
+            )
+        )
+
+    for expected_text in question.expected_answer_contains:
+        checks.append(
+            EvaluationCheck(
+                name="answer_contains",
+                passed=_contains_text(response.answer, expected_text),
+                details=f"expected answer to contain: {expected_text}",
+            )
+        )
+
+    for forbidden_text in question.forbidden_answer_contains:
+        checks.append(
+            EvaluationCheck(
+                name="answer_does_not_contain",
+                passed=not _contains_text(response.answer, forbidden_text),
+                details=f"expected answer not to contain: {forbidden_text}",
+            )
+        )
+
+    return checks
 
 
 def _source_hit(expected_sources: list[str], response: RAGResponse) -> bool:
@@ -133,6 +246,10 @@ def _is_refusal_like(answer: str) -> bool:
         "ask me a question about the indexed knowledge base",
     )
     return any(marker in normalized for marker in refusal_markers)
+
+
+def _contains_text(answer: str, expected_text: str) -> bool:
+    return _normalize(expected_text) in _normalize(answer)
 
 
 def _rate(values: Any) -> dict[str, int | float | None]:

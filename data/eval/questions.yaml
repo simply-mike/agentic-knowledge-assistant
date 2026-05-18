@@ -1,6 +1,7 @@
 - id: q001
   question: "How do I configure Kafka ingestion?"
   role: developer
+  tags: [docs, synthetic, kafka]
   expected_behavior: answer
   expected_sources:
     - kafka_ingestion_runbook.md
@@ -8,6 +9,7 @@
 - id: q002
   question: "What does the data platform overview say about storage and processing?"
   role: guest
+  tags: [docs, synthetic, public_access]
   expected_behavior: answer
   expected_sources:
     - data_platform_overview.md
@@ -15,6 +17,7 @@
 - id: q003
   question: "How should developers troubleshoot failed Spark jobs?"
   role: developer
+  tags: [docs, synthetic, spark]
   expected_behavior: answer
   expected_sources:
     - spark_job_troubleshooting.md
@@ -22,6 +25,7 @@
 - id: q004
   question: "What is the model serving SLA?"
   role: developer
+  tags: [docs, synthetic, ml_platform]
   expected_behavior: answer
   expected_sources:
     - model_serving_sla.md
@@ -29,6 +33,7 @@
 - id: q005
   question: "How does object storage support the data lake?"
   role: developer
+  tags: [docs, synthetic, object_storage]
   expected_behavior: answer
   expected_sources:
     - object_storage_data_lake_guide.md
@@ -36,6 +41,7 @@
 - id: q006
   question: "What is the cloud platform onboarding process?"
   role: developer
+  tags: [docs, synthetic, onboarding]
   expected_behavior: answer
   expected_sources:
     - cloud_platform_onboarding.md
@@ -43,6 +49,7 @@
 - id: q007
   question: "What does the incident response playbook recommend?"
   role: developer
+  tags: [docs, synthetic, operations]
   expected_behavior: answer
   expected_sources:
     - incident_response_playbook.md
@@ -50,6 +57,7 @@
 - id: q008
   question: "What does the feature store access policy require?"
   role: data_analyst
+  tags: [docs, synthetic, analytics]
   expected_behavior: answer
   expected_sources:
     - feature_store_access_policy.md
@@ -57,6 +65,7 @@
 - id: q009
   question: "What does the public MWS Object Storage overview describe?"
   role: guest
+  tags: [docs, public_mws, object_storage]
   expected_behavior: answer
   expected_sources:
     - mws_object_storage_overview.md
@@ -66,6 +75,7 @@
 - id: q010
   question: "Which public MWS page describes IAM roles and bucket policies?"
   role: guest
+  tags: [docs, public_mws, object_storage]
   expected_behavior: answer
   expected_sources:
     - mws_object_storage_access.md
@@ -75,6 +85,7 @@
 - id: q011
   question: "What does the public MWS Data Lakehouse documentation describe?"
   role: guest
+  tags: [docs, public_mws, lakehouse]
   expected_behavior: answer
   expected_sources:
     - mws_data_lakehouse_overview.md
@@ -84,6 +95,7 @@
 - id: q012
   question: "What does the public MWS Managed Kafka overview say?"
   role: guest
+  tags: [docs, public_mws, kafka]
   expected_behavior: answer
   expected_sources:
     - mws_managed_kafka_overview.md
@@ -93,62 +105,92 @@
 - id: q013
   question: "What was p95 latency for kafka_ingestion in the last 24 hours?"
   role: data_analyst
+  tags: [tool, metrics, kafka]
   expected_behavior: tool_call
   expected_tool: mock_metrics_api
+  expected_answer_contains:
+    - "P95 latency"
+    - "420 ms"
   expected_sources:
     - metrics_api_reference.md
 
 - id: q014
   question: "Show success rate and failed jobs for model serving metrics."
   role: data_analyst
+  tags: [tool, metrics, model_serving]
   expected_behavior: tool_call
   expected_tool: mock_metrics_api
+  expected_answer_contains:
+    - "Success rate"
+    - "model_serving"
   expected_sources:
     - metrics_api_reference.md
 
 - id: q015
   question: "What are the metrics for Spark feature jobs today?"
   role: data_analyst
+  tags: [tool, metrics, spark]
   expected_behavior: tool_call
   expected_tool: mock_metrics_api
+  expected_answer_contains:
+    - "spark_feature_jobs"
   expected_sources:
     - metrics_api_reference.md
 
 - id: q016
   question: "Show failed rows in pipeline_runs for kafka."
   role: data_analyst
+  tags: [tool, sql, kafka]
   expected_behavior: tool_call
   expected_tool: sql_tool
+  expected_answer_contains:
+    - "pipeline_runs"
+    - "failed"
 
 - id: q017
   question: "Query the pipeline_runs table for successful model serving jobs."
   role: data_analyst
+  tags: [tool, sql, model_serving]
   expected_behavior: tool_call
   expected_tool: sql_tool
+  expected_answer_contains:
+    - "pipeline_runs"
+    - "model_serving"
 
 - id: q018
   question: "Run SQL for spark feature jobs in pipeline_runs."
   role: data_analyst
+  tags: [tool, sql, spark]
   expected_behavior: tool_call
   expected_tool: sql_tool
+  expected_answer_contains:
+    - "pipeline_runs"
+    - "spark_feature_jobs"
 
 - id: q019
   question: "Show confidential client business metrics."
   role: developer
+  tags: [permission, confidential, metrics]
   expected_behavior: deny_permission
   expected_sources:
     - confidential_metrics_policy.md
+  forbidden_answer_contains:
+    - "confidential metrics policy"
 
 - id: q020
   question: "What does the confidential metrics policy allow?"
   role: data_analyst
+  tags: [permission, confidential]
   expected_behavior: deny_permission
   expected_sources:
     - confidential_metrics_policy.md
+  forbidden_answer_contains:
+    - "confidential metrics policy"
 
 - id: q021
   question: "What does the confidential metrics policy allow?"
   role: admin
+  tags: [docs, permission, confidential, admin]
   expected_behavior: answer
   expected_sources:
     - confidential_metrics_policy.md
@@ -156,9 +198,12 @@
 - id: q022
   question: "What does the internal Kafka ingestion runbook say about retries?"
   role: guest
+  tags: [permission, synthetic, kafka]
   expected_behavior: deny_permission
   expected_sources:
     - kafka_ingestion_runbook.md
+  forbidden_answer_contains:
+    - "Kafka Ingestion Runbook"
   filters:
     source: synthetic_internal
     permission_level: developer
@@ -166,9 +211,11 @@
 - id: q023
   question: "?"
   role: guest
+  tags: [fallback, malformed]
   expected_behavior: fallback
 
 - id: q024
   question: "hello"
   role: guest
+  tags: [fallback, general_chat]
   expected_behavior: fallback

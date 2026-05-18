@@ -8,7 +8,7 @@ from typing import Literal
 from app.agents.graph import LangGraphAgent
 from app.config import get_settings
 from app.db.session import SessionLocal
-from app.evaluation.dataset import EvalQuestion, load_eval_questions
+from app.evaluation.dataset import EvalQuestion, filter_questions, load_eval_questions
 from app.evaluation.metrics import QuestionEvaluation, aggregate_metrics, evaluate_response
 from app.logging_config import configure_logging
 from app.retrieval.embeddings import build_embedding_provider
@@ -26,10 +26,18 @@ def run_evaluation(
     dataset_path: Path,
     modes: list[EvalMode],
     top_k: int,
+    tags: list[str] | None = None,
+    roles: list[str] | None = None,
+    behaviors: list[str] | None = None,
 ) -> dict:
     settings = get_settings()
     configure_logging(settings.log_level)
-    questions = load_eval_questions(dataset_path)
+    questions = filter_questions(
+        questions=load_eval_questions(dataset_path),
+        tags=tags or [],
+        roles=roles or [],
+        behaviors=behaviors or [],
+    )
 
     with SessionLocal() as db:
         embedding_provider = build_embedding_provider(settings)
@@ -46,6 +54,11 @@ def run_evaluation(
         "generated_at": datetime.now(UTC).isoformat(),
         "dataset": str(dataset_path),
         "top_k": top_k,
+        "filters": {
+            "tags": tags or [],
+            "roles": roles or [],
+            "behaviors": behaviors or [],
+        },
         "results": results,
     }
 
@@ -112,14 +125,45 @@ def main() -> None:
         help="Evaluation mode to run.",
     )
     parser.add_argument("--top-k", type=int, default=5, help="Retriever top_k.")
+    parser.add_argument(
+        "--tag",
+        action="append",
+        default=[],
+        help="Run only questions with this tag. Can be passed multiple times.",
+    )
+    parser.add_argument(
+        "--role",
+        action="append",
+        default=[],
+        help="Run only questions for this role. Can be passed multiple times.",
+    )
+    parser.add_argument(
+        "--behavior",
+        action="append",
+        default=[],
+        help="Run only questions with this expected behavior. Can be passed multiple times.",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional path to write the JSON report.",
+    )
     args = parser.parse_args()
 
     report = run_evaluation(
         dataset_path=args.dataset,
         modes=_parse_modes(args.mode),
         top_k=args.top_k,
+        tags=args.tag,
+        roles=args.role,
+        behaviors=args.behavior,
     )
-    print(json.dumps(report, indent=2, sort_keys=True))
+    rendered_report = json.dumps(report, indent=2, sort_keys=True)
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(rendered_report + "\n", encoding="utf-8")
+    print(rendered_report)
 
 
 if __name__ == "__main__":
