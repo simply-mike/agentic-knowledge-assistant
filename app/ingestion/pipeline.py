@@ -3,7 +3,7 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -19,6 +19,9 @@ from app.logging_config import configure_logging
 from app.retrieval.embeddings import EmbeddingProvider, build_embedding_provider
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+EMBEDDING_BATCH_SIZE = 64
 
 REQUIRED_METADATA_FIELDS = {
     "title",
@@ -124,19 +127,19 @@ def _ingest_document(
         document_status = "inserted"
 
     db.flush()
-    embeddings = embedding_provider.embed_texts([chunk.content for chunk in chunks])
-
-    for chunk, embedding in zip(chunks, embeddings, strict=True):
-        db.add(
-            Chunk(
-                document_id=document.id,
-                chunk_index=chunk.chunk_index,
-                content=chunk.content,
-                embedding=embedding,
-                metadata_json=_chunk_metadata(raw_document, chunk.chunk_index),
-                token_count=chunk.token_count,
+    for chunk_batch in _batched(chunks, EMBEDDING_BATCH_SIZE):
+        embeddings = embedding_provider.embed_texts([chunk.content for chunk in chunk_batch])
+        for chunk, embedding in zip(chunk_batch, embeddings, strict=True):
+            db.add(
+                Chunk(
+                    document_id=document.id,
+                    chunk_index=chunk.chunk_index,
+                    content=chunk.content,
+                    embedding=embedding,
+                    metadata_json=_chunk_metadata(raw_document, chunk.chunk_index),
+                    token_count=chunk.token_count,
+                )
             )
-        )
 
     if document_status == "inserted":
         return IngestionStats(documents_seen=1, documents_inserted=1, chunks_inserted=len(chunks))
@@ -189,6 +192,12 @@ def _merge_stats(left: IngestionStats, right: IngestionStats) -> IngestionStats:
         documents_skipped=left.documents_skipped + right.documents_skipped,
         chunks_inserted=left.chunks_inserted + right.chunks_inserted,
     )
+
+
+def _batched(items: list[T], batch_size: int) -> list[list[T]]:
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive.")
+    return [items[index : index + batch_size] for index in range(0, len(items), batch_size)]
 
 
 def main() -> None:

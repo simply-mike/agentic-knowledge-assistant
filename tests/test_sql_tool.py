@@ -48,6 +48,52 @@ def test_sql_tool_allows_read_only_pipeline_runs_query() -> None:
     assert result["rows"][0]["pipeline_name"] == "kafka_ingestion"
 
 
+def test_sql_tool_caps_explicit_limit() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    with Session(engine) as session:
+        session.execute(
+            text(
+                """
+                CREATE TABLE pipeline_runs (
+                    pipeline_name TEXT,
+                    started_at TEXT,
+                    finished_at TEXT,
+                    status TEXT,
+                    records_processed INTEGER,
+                    latency_ms INTEGER,
+                    error_code TEXT
+                )
+                """
+            )
+        )
+        for index in range(5):
+            session.execute(
+                text(
+                    """
+                    INSERT INTO pipeline_runs
+                    VALUES (
+                        'kafka_ingestion',
+                        :started_at,
+                        :finished_at,
+                        'succeeded',
+                        100,
+                        50,
+                        NULL
+                    )
+                    """
+                ),
+                {"started_at": f"2026-05-15T10:0{index}:00", "finished_at": None},
+            )
+        session.commit()
+
+        result = ReadOnlySQLTool(session, max_rows=2).run(
+            "SELECT pipeline_name FROM pipeline_runs LIMIT 1000"
+        )
+
+    assert result["sql"].endswith("LIMIT 2")
+    assert result["row_count"] == 2
+
+
 def test_sql_tool_rejects_mutating_queries() -> None:
     for sql_query in (
         "INSERT INTO pipeline_runs VALUES ('x')",

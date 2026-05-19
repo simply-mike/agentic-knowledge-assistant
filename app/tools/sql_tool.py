@@ -38,6 +38,8 @@ ALLOWED_TABLES = {"pipeline_runs"}
 
 class ReadOnlySQLTool:
     def __init__(self, db: "Session", max_rows: int = 50) -> None:
+        if max_rows <= 0:
+            raise ValueError("max_rows must be positive.")
         self.db = db
         self.max_rows = max_rows
 
@@ -125,8 +127,14 @@ def _infer_status_filter(user_query: str) -> str | None:
 
 def _ensure_limit(sql_query: str, max_rows: int) -> str:
     normalized = _normalize_sql(sql_query)
-    if re.search(r"\blimit\s+\d+\b", normalized, flags=re.IGNORECASE):
-        return normalized
+    limit_match = re.search(r"\blimit\s+(\d+)\b", normalized, flags=re.IGNORECASE)
+    if limit_match:
+        requested_limit = int(limit_match.group(1))
+        capped_limit = min(requested_limit, max_rows)
+        return (
+            f"{normalized[: limit_match.start()]}LIMIT {capped_limit}"
+            f"{normalized[limit_match.end() :]}"
+        )
     return f"{normalized} LIMIT {max_rows}"
 
 

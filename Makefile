@@ -50,11 +50,9 @@ eval-tools:
 	$(COMPOSE) run --rm -v "$(CURDIR)/reports:/app/reports" api python -m app.evaluation.run_eval --dataset $(DATASET) --mode agentic --tag tool --output $(REPORT_DIR)/tool-agentic.json
 
 test-local:
-	$(PYTHON) -m compileall app tests
-	$(PYTHON) -c "from pathlib import Path; bad=[]; [bad.append((str(p), i, len(line.rstrip('\n')))) for p in list(Path('app').rglob('*.py'))+list(Path('tests').rglob('*.py')) for i,line in enumerate(p.read_text().splitlines(True),1) if len(line.rstrip('\n'))>100]; print(bad[:20]); raise SystemExit(1 if bad else 0)"
-	git diff --check
+	$(PYTHON) scripts/smoke_check.py
 
-test-docker:
+test-docker: build
 	$(COMPOSE) run --rm -v "$(CURDIR)/tests:/app/tests:ro" api python tests/manual_runner.py
 
 smoke: build init-db ingest eval-agentic
