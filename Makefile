@@ -3,7 +3,7 @@ COMPOSE ?= docker-compose
 DATASET ?= data/eval/questions.yaml
 REPORT_DIR ?= reports/evaluation
 
-.PHONY: help build up down init-db ingest ingest-synthetic ingest-public eval eval-agentic eval-tools test-local test-docker smoke
+.PHONY: help build up down init-db ingest ingest-synthetic ingest-public eval eval-agentic eval-tools demo-walkthrough test-local test-docker smoke
 
 help:
 	@echo "Agentic Knowledge Assistant commands"
@@ -16,6 +16,7 @@ help:
 	@echo "  make eval             Run baseline and agentic evaluation"
 	@echo "  make eval-agentic     Run agentic evaluation only"
 	@echo "  make eval-tools       Run focused agentic tool tests and write JSON report"
+	@echo "  make demo-walkthrough Print the interview/demo API walkthrough"
 	@echo "  make test-local       Run local compile and whitespace checks"
 	@echo "  make test-docker      Run mounted test suite inside the API container"
 	@echo "  make smoke            Build, initialize, ingest, and run agentic eval"
@@ -48,6 +49,9 @@ eval-agentic:
 
 eval-tools:
 	$(COMPOSE) run --rm -v "$(CURDIR)/reports:/app/reports" api python -m app.evaluation.run_eval --dataset $(DATASET) --mode agentic --tag tool --output $(REPORT_DIR)/tool-agentic.json
+
+demo-walkthrough:
+	$(PYTHON) scripts/demo_walkthrough.py
 
 test-local:
 	$(PYTHON) scripts/smoke_check.py
