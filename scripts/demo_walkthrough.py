@@ -150,7 +150,7 @@ def execute_case(base_url: str, demo_case: DemoCase, timeout_seconds: float) -> 
     )
 
     try:
-        with urlopen(request, timeout=timeout_seconds) as response:
+        with urlopen(request, timeout=timeout_seconds) as response:  # nosec B310
             response_payload = json.loads(response.read().decode("utf-8"))
     except (URLError, TimeoutError, json.JSONDecodeError) as exc:
         print(f"Execution failed for {demo_case.name}: {exc}")

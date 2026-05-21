@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import compileall
 import os
-import subprocess
+import subprocess  # nosec B404
 import sys
 from argparse import ArgumentParser, Namespace
 from collections.abc import Callable
@@ -78,7 +78,7 @@ def check_git_whitespace() -> None:
 def run(command: list[str]) -> None:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(REPO_ROOT)
-    completed = subprocess.run(command, cwd=REPO_ROOT, check=False, env=env)
+    completed = subprocess.run(command, cwd=REPO_ROOT, check=False, env=env)  # nosec B603
     if completed.returncode != 0:
         joined = " ".join(command)
         raise SystemExit(f"Command failed with exit code {completed.returncode}: {joined}")

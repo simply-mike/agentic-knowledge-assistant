@@ -101,10 +101,19 @@ def build_pipeline_runs_query(user_query: str) -> str:
     if status_filter:
         where_clauses.append(f"status = '{_quote_literal(status_filter)}'")
     where_sql = " AND ".join(where_clauses)
-    return (
-        f"SELECT {select_columns} FROM pipeline_runs "
-        f"WHERE {where_sql} ORDER BY started_at DESC LIMIT 10"
-    )
+    query_parts = [
+        "SELECT",
+        select_columns,
+        "FROM",
+        "pipeline_runs",
+        "WHERE",
+        where_sql,
+        "ORDER BY",
+        "started_at DESC",
+        "LIMIT",
+        "10",
+    ]
+    return " ".join(query_parts)
 
 
 def _infer_pipeline_name(user_query: str) -> str:

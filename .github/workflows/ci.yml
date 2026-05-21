@@ -26,6 +26,9 @@ jobs:
       - name: Run smoke checks
         run: python scripts/smoke_check.py --with-tests
 
+      - name: Run security audit
+        run: make audit
+
   docker-build:
     name: Docker build
     runs-on: ubuntu-latest
