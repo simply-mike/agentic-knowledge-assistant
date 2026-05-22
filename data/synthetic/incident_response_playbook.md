@@ -9,9 +9,6 @@ synthetic: true
 
 # Incident Response Playbook
 
-Synthetic internal document for demonstration purposes. This document is not affiliated
-with MTS or MWS and does not describe real internal systems.
-
 Platform incidents are classified by user impact, data freshness risk, and recovery time.
 The first responder should create an incident record, assign an owner, capture the current
 symptoms, and preserve logs before restarting services.

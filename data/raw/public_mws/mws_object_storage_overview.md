@@ -10,10 +10,6 @@ synthetic: false
 
 # MWS Object Storage Overview
 
-Public documentation summary for demonstration purposes. This project is not affiliated
-with MTS or MWS. This file summarizes public documentation only and does not contain
-private or internal materials.
-
 The public Object Storage documentation explains that data is stored as objects inside
 buckets. Objects can represent files such as text documents, images, audio, or video.
 Each object has a name, object data, metadata, and, in versioned buckets, a version

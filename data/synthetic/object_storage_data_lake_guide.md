@@ -9,9 +9,6 @@ synthetic: true
 
 # Object Storage Data Lake Guide
 
-Synthetic internal document for demonstration purposes. This document is not affiliated
-with MTS or MWS and does not describe real internal systems.
-
 The demo data lake uses object storage zones to separate raw, cleaned, and curated data.
 Raw data should preserve source events with minimal changes. Cleaned data should normalize
 schemas and remove invalid records. Curated data should be optimized for analytics,

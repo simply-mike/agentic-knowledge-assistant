@@ -51,7 +51,6 @@ SYNTHETIC_METRICS: dict[tuple[str, str], PipelineMetrics] = {
 
 
 def mock_metrics_api(pipeline_name: str, period: str = "last_24h") -> dict[str, Any]:
-    """Return deterministic synthetic metrics for demo tool-use."""
     normalized_pipeline = _normalize_pipeline_name(pipeline_name)
     normalized_period = _normalize_period(period)
     metrics = SYNTHETIC_METRICS.get((normalized_pipeline, normalized_period))

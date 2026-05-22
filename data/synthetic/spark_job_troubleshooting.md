@@ -9,9 +9,6 @@ synthetic: true
 
 # Spark Job Troubleshooting
 
-Synthetic internal document for demonstration purposes. This document is not affiliated
-with MTS or MWS and does not describe real internal systems.
-
 Spark jobs process data from the raw and cleaned zones into curated tables. Common failure
 classes are input schema drift, executor memory pressure, shuffle skew, missing partitions,
 and slow object-storage reads.

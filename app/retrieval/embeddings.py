@@ -6,7 +6,7 @@ from typing import Any, Literal, Protocol
 
 
 class EmbeddingProviderError(RuntimeError):
-    """Raised when an embedding provider cannot produce usable vectors."""
+    pass
 
 
 class EmbeddingProvider(Protocol):
@@ -30,8 +30,6 @@ class EmbeddingSettings(Protocol):
 
 
 class DeterministicEmbeddingProvider:
-    """Small deterministic embedding provider for tests and local ingestion demos."""
-
     def __init__(self, dimensions: int) -> None:
         if dimensions <= 0:
             raise ValueError("Embedding dimensions must be positive.")
@@ -62,8 +60,6 @@ class DeterministicEmbeddingProvider:
 
 @dataclass(frozen=True)
 class OpenAICompatibleEmbeddingProvider:
-    """Embedding provider for OpenAI-compatible /v1/embeddings APIs."""
-
     api_key: str
     model: str
     dimensions: int

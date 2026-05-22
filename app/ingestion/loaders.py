@@ -4,7 +4,7 @@ from typing import Any
 
 
 class FrontmatterError(ValueError):
-    """Raised when a markdown file has missing or invalid frontmatter."""
+    pass
 
 
 @dataclass(frozen=True)

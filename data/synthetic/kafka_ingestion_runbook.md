@@ -9,9 +9,6 @@ synthetic: true
 
 # Kafka Ingestion Runbook
 
-Synthetic internal document for demonstration purposes. This document is not affiliated
-with MTS or MWS and does not describe real internal systems.
-
 Kafka ingestion jobs copy events from approved Kafka topics into the raw object-storage
 zone. Each job must define a topic name, consumer group, target bucket path, schema
 version, checkpoint location, and retry policy.

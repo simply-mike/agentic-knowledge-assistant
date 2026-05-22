@@ -126,7 +126,7 @@ def print_case(base_url: str, demo_case: DemoCase) -> None:
     print("curl command:")
     print(
         "curl -X POST "
-        f"{base_url.rstrip()}/chat "
+        f"{base_url.rstrip('/')}/chat "
         '-H "Content-Type: application/json" '
         f"-d '{json.dumps(payload)}'"
     )

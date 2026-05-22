@@ -34,20 +34,15 @@ class RetrieverProtocol(Protocol):
 
 
 class ExtractiveAnswerGenerator:
-    """Builds a conservative answer from retrieved chunks only."""
-
     def generate(self, query: str, chunks: Sequence[RetrievedChunk]) -> str:
         if not chunks:
             return refusal_answer()
 
-        parts = [
-            "I found relevant knowledge-base context. Here is a grounded baseline answer:",
-        ]
+        parts = []
         for index, chunk in enumerate(chunks[:3], start=1):
             snippet = _compact_snippet(chunk.content)
             parts.append(f"{index}. {snippet} [source: {chunk.title}]")
 
-        parts.append("Use the cited sources below to inspect the supporting context.")
         return "\n\n".join(parts)
 
 

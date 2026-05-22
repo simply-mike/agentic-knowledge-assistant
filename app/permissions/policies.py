@@ -7,7 +7,7 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
 
 
 class PermissionPolicyError(ValueError):
-    """Raised when an invalid role or permission is used."""
+    pass
 
 
 def allowed_permission_levels(role: str) -> list[str]:

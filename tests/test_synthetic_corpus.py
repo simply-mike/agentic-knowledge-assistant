@@ -29,4 +29,4 @@ def test_synthetic_documents_are_marked_synthetic_internal() -> None:
 
         assert metadata["source"] == "synthetic_internal"
         assert metadata["synthetic"] is True
-        assert "Synthetic internal document for demonstration purposes" in content
+        assert content.strip()

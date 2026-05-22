@@ -9,9 +9,6 @@ synthetic: true
 
 # Feature Store Access Policy
 
-Synthetic internal document for demonstration purposes. This document is not affiliated
-with MTS or MWS and does not describe real internal systems.
-
 The feature store provides curated features for analytics and model training. Feature
 tables must include an owner, freshness expectation, entity key, training-serving parity
 notes, and allowed consumer roles.

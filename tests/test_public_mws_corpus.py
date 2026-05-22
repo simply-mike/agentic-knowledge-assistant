@@ -28,4 +28,4 @@ def test_public_mws_documents_are_public_and_not_synthetic() -> None:
         assert metadata["permission_level"] == "public"
         assert metadata["synthetic"] is False
         assert str(metadata["url"]).startswith(("https://mws.ru/", "https://docs.data.mws.ru/"))
-        assert "not affiliated" in content
+        assert content.strip()

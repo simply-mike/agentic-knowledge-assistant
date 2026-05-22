@@ -9,9 +9,6 @@ synthetic: true
 
 # Model Serving SLA
 
-Synthetic internal document for demonstration purposes. This document is not affiliated
-with MTS or MWS and does not describe real internal systems.
-
 Model serving endpoints expose approved models for online inference. Each endpoint must
 define an owner, model version, rollback version, expected request rate, latency target,
 and alert routing.

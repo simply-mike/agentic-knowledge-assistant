@@ -57,7 +57,7 @@ demo-walkthrough:
 
 audit:
 	$(PYTHON) -m bandit -q -c pyproject.toml -r app scripts
-	$(PYTHON) -m pip_audit --cache-dir $(PIP_AUDIT_CACHE_DIR) --skip-editable --progress-spinner off
+	$(PYTHON) -m pip_audit . --cache-dir $(PIP_AUDIT_CACHE_DIR) --progress-spinner off
 
 test-local:
 	$(PYTHON) scripts/smoke_check.py
