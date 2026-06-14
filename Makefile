@@ -1,4 +1,5 @@
-PYTHON ?= python3
+UV ?= uv
+PYTHON ?= $(UV) run --locked python
 COMPOSE ?= docker-compose
 DATASET ?= data/eval/questions.yaml
 REPORT_DIR ?= reports/evaluation
@@ -57,7 +58,9 @@ demo-walkthrough:
 
 audit:
 	$(PYTHON) -m bandit -q -c pyproject.toml -r app scripts
-	$(PYTHON) -m pip_audit . --cache-dir $(PIP_AUDIT_CACHE_DIR) --progress-spinner off
+	mkdir -p .cache
+	$(UV) export --locked --no-dev --no-emit-project --quiet -o .cache/audit-requirements.txt
+	$(PYTHON) -m pip_audit -r .cache/audit-requirements.txt --disable-pip --cache-dir $(PIP_AUDIT_CACHE_DIR) --progress-spinner off
 
 test-local:
 	$(PYTHON) scripts/smoke_check.py

@@ -10,10 +10,12 @@ MWS. It contains no private company documents or live internal integrations.
 
 ## Run locally
 
-Requires Docker and Docker Compose. The default embeddings are deterministic; an API key
+Requires uv, Docker, and Docker Compose. `uv` uses Python 3.11 and installs the locked
+dependencies with `uv sync --locked`. The default embeddings are deterministic; an API key
 is optional.
 
 ```bash
+uv sync --locked
 cp .env.example .env
 make up
 ```
@@ -45,7 +47,7 @@ The response has `answer`, `sources`, `tool_calls`, and `trace_id` fields. Other
   must not appear in the answer or sources.
 
 Run `make demo-walkthrough` to print requests for all four cases, or
-`python scripts/demo_walkthrough.py --execute` to call the local API.
+`uv run --locked python scripts/demo_walkthrough.py --execute` to call the local API.
 
 ## How it works
 
@@ -65,6 +67,7 @@ pipeline rows, and internal documents are synthetic.
 
 ```bash
 make test-local
+uv run --locked pytest -q
 make test-docker
 make eval
 ```
@@ -75,6 +78,9 @@ retrieval with the agent workflow on the controlled questions in
 [`data/eval/questions.yaml`](data/eval/questions.yaml). The dataset checks source hits,
 citations, permissions, tool calls, and refusals; it is a regression check, not a
 production benchmark. Run `make audit` for Bandit and dependency checks.
+
+After changing dependencies in `pyproject.toml`, run `uv lock` and commit the updated
+`uv.lock`.
 
 The current limits are rule-based intent classification, deterministic default embeddings,
 extractive answers, a narrow SQL tool, and a small synthetic evaluation set.
